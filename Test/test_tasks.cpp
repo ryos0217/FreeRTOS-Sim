@@ -5,6 +5,12 @@ extern "C" {
 #include "FreeRTOS.h"
 #include "task.h"
 #include "stub.h"
+
+static void prvCheckTask( void *pvParameters )
+{
+  int *ptr = (int*)pvParameters;
+  *ptr = 0;
+}
 }
 
 TEST_GROUP(xTaskCreate)
@@ -25,10 +31,30 @@ TEST(xTaskCreate, allocFail)
               xTaskCreate (NULL, "TaskName", 0, NULL, 0, NULL));
 }
 
-TEST(xTaskCreate, Success)
+TEST(xTaskCreate, SuccessEvenWithoutHandler)
 {
   CHECK_EQUAL(pdPASS,
               xTaskCreate (NULL, "TaskName", 0, NULL, 0, NULL));
+}
+
+TEST(xTaskCreate, DeleteCreatedTask)
+{
+  TaskHandle_t task;
+
+  CHECK_EQUAL(pdPASS,
+              xTaskCreate (NULL, "TaskName", 0, NULL, 0, &task));
+
+  vTaskDelete (task);
+}
+
+TEST(xTaskCreate, HandlerIsCalledWithParam)
+{
+  int param = -1;
+  void *pvParameters = &param;
+
+  CHECK_EQUAL(pdPASS,
+              xTaskCreate (prvCheckTask, "TaskName", 0, pvParameters, 0, NULL));
+  CHECK_EQUAL(0, param);
 }
 
 int
