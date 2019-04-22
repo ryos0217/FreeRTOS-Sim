@@ -14,8 +14,10 @@ tasks.o: $(MAKETOP)/Source/tasks.c
 test_tasks: stub.o tasks.o test_tasks.o
 	g++ -o $@ $(LDFLAGS) $^ `pkg-config --libs cpputest`
 
+run: test_tasks
+	./$< -c -v
 
 clean:
 	rm -f test_tasks *~ *.o
 
-.PHONY: clean all
+.PHONY: clean all run
