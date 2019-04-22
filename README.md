@@ -14,6 +14,14 @@ V10 is added to the master branch without extensive tests. Feel free to report o
 
 ### Dependencies
 
+#### For Demo
+
 ```shell-sessions
 sudo apt install gcc-multilib
+```
+
+#### For Test
+
+```shell-sessions
+sudo apt install gcc-multilib pkg-config cpputest
 ```
