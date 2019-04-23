@@ -13,38 +13,39 @@ static void prvCheckTask( void *pvParameters )
 }
 }
 
+#define DEFAULT_STACK_SIZE 8192
+
 TEST_GROUP(xTaskCreate)
 {
+  TaskHandle_t task;
+
   void setup()
   {
   }
   void teardown()
   {
+    vTaskDelete (task);
     stub_reset ();
   }
 };
 
-TEST(xTaskCreate, allocFail)
+TEST(xTaskCreate, FailsWhenAllocFail)
 {
   stub_set_malloc_fail ();
   CHECK_EQUAL(errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY,
-              xTaskCreate (NULL, "TaskName", 0, NULL, 0, NULL));
+              xTaskCreate (prvCheckTask, "TaskName", DEFAULT_STACK_SIZE, NULL, 0, &task));
+}
+
+TEST(xTaskCreate, FailsWhenInvalidTaskDepth)
+{
+  CHECK_EQUAL(errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY,
+              xTaskCreate (prvCheckTask, "TaskName", 0, NULL, 0, &task));
 }
 
 TEST(xTaskCreate, SuccessEvenWithoutHandler)
 {
   CHECK_EQUAL(pdPASS,
-              xTaskCreate (NULL, "TaskName", 0, NULL, 0, NULL));
-}
-
-TEST(xTaskCreate, DeleteCreatedTask)
-{
-  TaskHandle_t task;
-
-  CHECK_EQUAL(pdPASS,
-              xTaskCreate (NULL, "TaskName", 0, NULL, 0, &task));
-
-  vTaskDelete (task);
+              xTaskCreate (NULL, "TaskName", DEFAULT_STACK_SIZE, NULL, 0, &task));
 }
 
 TEST(xTaskCreate, HandlerIsCalledWithParam)
@@ -53,7 +54,7 @@ TEST(xTaskCreate, HandlerIsCalledWithParam)
   void *pvParameters = &param;
 
   CHECK_EQUAL(pdPASS,
-              xTaskCreate (prvCheckTask, "TaskName", 0, pvParameters, 0, NULL));
+              xTaskCreate (prvCheckTask, "TaskName", DEFAULT_STACK_SIZE, pvParameters, 0, &task));
   CHECK_EQUAL(0, param);
 }
 

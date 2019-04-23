@@ -101,10 +101,17 @@ void *pvPortMalloc( size_t xSize ) PRIVILEGED_FUNCTION
   if (malloc_fail)
     return NULL;
 
+  if (xSize <= 0)
+    return NULL;
+
   return malloc (xSize);
 }
 void vPortFree( void *pv ) PRIVILEGED_FUNCTION
 {
+  if (!pv)
+    return;
+
+  free (pv);
 }
 void vPortYield( void )
 {
