@@ -8,10 +8,13 @@ all: test_tasks
 tasks.o: $(MAKETOP)/Source/tasks.c
 	gcc -c -o $@ $(CPPFLAGS) $(CFLAGS) $^
 
+list.o: $(MAKETOP)/Source/list.c
+	gcc -c -o $@ $(CPPFLAGS) $(CFLAGS) $^
+
 .c.o:
 	gcc -c -o $@ $(CPPFLAGS) $(CFLAGS) $^
 
-test_tasks: stub.o tasks.o test_tasks.o
+test_tasks: stub.o list.o tasks.o test_tasks.o
 	g++ -o $@ $(LDFLAGS) $^ `pkg-config --libs cpputest`
 
 run: test_tasks

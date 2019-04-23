@@ -42,10 +42,6 @@ unsigned long ulPortGetTimerValue( void )
   return 0;
 }
 
-UBaseType_t uxListRemove( ListItem_t * const pxItemToRemove ) PRIVILEGED_FUNCTION
-{
-  return 0;
-}
 void vCoRoutineSchedule( void )
 {
 }
@@ -57,19 +53,6 @@ void vApplicationTickHook( void )
 }
 
 void vAssertCalled( unsigned long ulLine, const char * const pcFileName )
-{
-}
-void vListInitialise( List_t * const pxList ) PRIVILEGED_FUNCTION
-{
-}
-void vListInitialiseItem( ListItem_t * const pxItem ) PRIVILEGED_FUNCTION
-{
-}
-
-void vListInsert( List_t * const pxList, ListItem_t * const pxNewListItem ) PRIVILEGED_FUNCTION
-{
-}
-void vListInsertEnd( List_t * const pxList, ListItem_t * const pxNewListItem ) PRIVILEGED_FUNCTION
 {
 }
 void vPortAddTaskHandle( void *pxTaskHandle )
