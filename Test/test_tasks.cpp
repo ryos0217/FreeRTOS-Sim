@@ -5,6 +5,7 @@ extern "C" {
 #include "FreeRTOS.h"
 #include "task.h"
 #include "stub.h"
+#include "tasks_sniffer.h"
 
 static void prvCheckTask( void *pvParameters )
 {
@@ -53,15 +54,12 @@ TEST(xTaskCreate, SuccessEvenWithoutHandler)
               xTaskCreate (NULL, "TaskName", DEFAULT_STACK_DEPTH, NULL, 0, &task));
 }
 
-TEST(xTaskCreate, HandlerIsCalledWithParam)
+TEST(xTaskCreate, ChangesCurrentTaskName)
 {
-  int param = -1;
-  void *pvParameters = &param;
-
-  int ret = xTaskCreate (prvCheckTask, "TaskName", DEFAULT_STACK_DEPTH, pvParameters, 0, &task);
+  int ret = xTaskCreate (prvCheckTask, "TaskName", DEFAULT_STACK_DEPTH, NULL, 0, &task);
 
   CHECK_EQUAL(pdPASS, ret);
-  CHECK_EQUAL(0, param);
+  CHECK (checkCurrentTaskName ("TaskName"));
 }
 
 int
