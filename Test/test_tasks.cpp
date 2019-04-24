@@ -54,12 +54,37 @@ TEST(xTaskCreate, SuccessEvenWithoutHandler)
               xTaskCreate (NULL, "TaskName", DEFAULT_STACK_DEPTH, NULL, 0, &task));
 }
 
+TEST(xTaskCreate, CreatesTaskWithRunningState)
+{
+  int ret = xTaskCreate (prvCheckTask, "TaskName", DEFAULT_STACK_DEPTH, NULL, 0, &task);
+
+  CHECK_EQUAL(pdPASS, ret);
+  CHECK_EQUAL(eRunning, eTaskGetState(task));
+}
+
+TEST(xTaskCreate, CreatesTaskWithSpecifiedName)
+{
+  int ret = xTaskCreate (prvCheckTask, "TaskName", DEFAULT_STACK_DEPTH, NULL, 0, &task);
+
+  CHECK_EQUAL(pdPASS, ret);
+  STRCMP_EQUAL("TaskName", pcTaskGetName(task));
+}
+
+TEST(xTaskCreate, ChangesCurrentTask)
+{
+  int ret = xTaskCreate (prvCheckTask, "TaskName", DEFAULT_STACK_DEPTH, NULL, 0, &task);
+
+  CHECK_EQUAL(pdPASS, ret);
+  CHECK_EQUAL(task, xTaskGetCurrentTaskHandle());
+}
+
 TEST(xTaskCreate, ChangesCurrentTaskName)
 {
   int ret = xTaskCreate (prvCheckTask, "TaskName", DEFAULT_STACK_DEPTH, NULL, 0, &task);
 
   CHECK_EQUAL(pdPASS, ret);
-  CHECK (checkCurrentTaskName ("TaskName"));
+  STRCMP_EQUAL("TaskName", pcTaskGetName(xTaskGetCurrentTaskHandle()));
+  CHECK(checkCurrentTaskName ("TaskName"));
 }
 
 int
