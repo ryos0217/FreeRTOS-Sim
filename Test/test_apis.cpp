@@ -1,6 +1,7 @@
 #include <CppUTest/CommandLineTestRunner.h>
 #include <CppUTest/TestHarness.h>
 #include <stdio.h>
+#include <string.h>
 
 extern "C" {
 #include "FreeRTOS.h"
@@ -131,5 +132,12 @@ TEST(Scheduler, CallsTwoTaskHandlers)
 
 int main(int argc, char* argv[])
 {
-  return CommandLineTestRunner::RunAllTests(argc, argv);
+  /* Enable -p option to run tests in a separate process.
+     To call pthread_once for each test. */
+  int new_argc = argc + 1;
+  char **new_argv = (char **)malloc(sizeof(char*));
+  for (int i = 0; i < argc; i++)
+    new_argv[i] = strdup(argv[i]);
+  new_argv[argc] = strdup("-p");
+  return CommandLineTestRunner::RunAllTests(new_argc, new_argv);
 }
