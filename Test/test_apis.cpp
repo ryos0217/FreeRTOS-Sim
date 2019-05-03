@@ -6,14 +6,6 @@ extern "C" {
 #include "FreeRTOS.h"
 #include "task.h"
 
-static void
-justEndSchedulerTask(void* pvParameters)
-{
-  int* ptr = (int*)pvParameters;
-  *ptr = 0;
-  vTaskEndScheduler();
-}
-
 void vApplicationMallocFailedHook(void)
 {
   vAssertCalled(__LINE__, __FILE__);
@@ -42,29 +34,99 @@ void vAssertCalled(unsigned long ulLine, const char* const pcFileName)
 
 TEST_GROUP(Scheduler)
 {
-  int param;
-  TaskHandle_t task;
-
   void setup()
   {
-    param = -1;
-    int ret = xTaskCreate(justEndSchedulerTask,
-        "TaskName", DEFAULT_STACK_DEPTH,
-        &param, 0, &task);
-
-    CHECK_EQUAL(pdPASS, ret);
   }
   void teardown()
   {
-    vTaskDelete(task);
   }
 };
 
+static void
+justEndSchedulerTask(void* pvParameters)
+{
+  int* ptr = (int*)pvParameters;
+  *ptr = 0;
+  vTaskEndScheduler();
+}
+
 TEST(Scheduler, CallsOneTaskHandler)
 {
+  /* 1. SETUP */
+  TaskHandle_t task;
+  int param = -1;
+  int ret = pdFAIL;
+  ret = xTaskCreate(justEndSchedulerTask,
+                    "JustEndSchedulerTask",
+                    DEFAULT_STACK_DEPTH,
+                    &param, 0, &task);
+  CHECK_EQUAL(pdPASS, ret);
+
+  /* 2. EXEC */
   vTaskStartScheduler();
 
+
+  /* 3. CHECK */
   CHECK_EQUAL(0, param);
+
+
+  /* 4. CLEANUP */
+  vTaskDelete(task);
+}
+
+
+static void
+countUpTask(void* pvParameters)
+{
+  int* ptr = (int*)pvParameters;
+
+  taskENTER_CRITICAL();
+
+  int count = *ptr;
+  ++count;
+  *ptr = count;
+
+  taskEXIT_CRITICAL();
+
+  if (count == 2)
+    {
+      vTaskEndScheduler();
+    }
+  else
+    {
+      while (1)
+        taskYIELD();
+    }
+}
+
+TEST(Scheduler, CallsTwoTaskHandlers)
+{
+  /* 1. SETUP */
+  TaskHandle_t tasks[2];
+  int count = 0;
+  int ret = pdFAIL;
+  ret = xTaskCreate(countUpTask,
+                    "countUpTask0",
+                    DEFAULT_STACK_DEPTH,
+                    &count, 0, &tasks[0]);
+  CHECK_EQUAL(pdPASS, ret);
+  ret = xTaskCreate(countUpTask,
+                    "countUpTask1",
+                    DEFAULT_STACK_DEPTH,
+                    &count, 0, &tasks[1]);
+  CHECK_EQUAL(pdPASS, ret);
+
+  /* 2. EXEC */
+  vTaskStartScheduler();
+
+
+  /* 3. CHECK */
+  CHECK_EQUAL(2, count);
+
+
+  /* 4. CLEANUP */
+  vTaskDelete(tasks[0]);
+  vTaskDelete(tasks[1]);
 }
 
 int main(int argc, char* argv[])
