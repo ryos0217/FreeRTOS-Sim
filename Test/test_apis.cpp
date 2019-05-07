@@ -35,8 +35,33 @@ void vAssertCalled(unsigned long ulLine, const char* const pcFileName)
 #define DEFAULT_STACK_DEPTH 2048
 
 TEST_GROUP(Scheduler){
-  void setup(){} void teardown(){}
+  void setup(){
+    for (int i = 0; i < 1024; i++) {
+      history[i] = 0;
+    }
+  }
+  void teardown(){}
+
+ protected:
+  TaskHandle_t history[1024];
 };
+
+static void record(TaskHandle_t* history, int size) {
+  TaskHandle_t handle = xTaskGetCurrentTaskHandle();
+
+  taskENTER_CRITICAL();
+
+  for (int i = 0; i < size; i++) {
+    if (history[i] == 0) {
+      history[i] = handle;
+      // printf ("@@@ %s: %d: history[%d] = %p\n",
+      //         __FILE__, __LINE__, i, handle);
+      break;
+    }
+  }
+
+  taskEXIT_CRITICAL();
+}
 
 static void
 justEndSchedulerTask(void* pvParameters)
@@ -167,18 +192,8 @@ static void
 storeIdTask(void* pvParameters)
 {
   TaskHandle_t* history = (TaskHandle_t*)pvParameters;
-  TaskHandle_t handle = xTaskGetCurrentTaskHandle();
 
-  taskENTER_CRITICAL();
-
-  for (int i = 0; i < 1024; i++) {
-    if (history[i] == 0) {
-      history[i] = handle;
-      break;
-    }
-  }
-
-  taskEXIT_CRITICAL();
+  record (history, 1024);
 
   while (1)
     vTaskDelay(1);
@@ -188,7 +203,6 @@ TEST(Scheduler, CallsTwoDifferentPrioTasks)
 {
   /* 1. SETUP */
   TaskHandle_t tasks[2];
-  TaskHandle_t history[1024] = { 0 };
   int ret = pdFAIL;
   ret = xTaskCreate(storeIdTask,
       "highPrioTask",
@@ -211,6 +225,61 @@ TEST(Scheduler, CallsTwoDifferentPrioTasks)
   /* 4. CLEANUP */
   vTaskDelete(tasks[0]);
   vTaskDelete(tasks[1]);
+}
+
+static void
+highPrioDelayedTask(void* pvParameters)
+{
+  TaskHandle_t* history = (TaskHandle_t*)pvParameters;
+
+  record(history, 1024);
+
+  vTaskDelay(1);
+
+  record(history, 1024);
+
+  vTaskEndScheduler();
+}
+
+static void
+lowPrioBusyTask(void* pvParameters)
+{
+  TaskHandle_t* history = (TaskHandle_t*)pvParameters;
+
+  record(history, 1024);
+
+  while (1) {
+    ;
+  }
+}
+
+TEST(Scheduler, CallsHighPrioTaskPreemptively)
+{
+  /* 1. SETUP */
+  TaskHandle_t highTask, lowTask;
+  int ret = pdFAIL;
+  ret = xTaskCreate(highPrioDelayedTask,
+      "highPrioTask",
+      DEFAULT_STACK_DEPTH,
+      history, 2, &highTask);
+  CHECK_EQUAL(pdPASS, ret);
+  ret = xTaskCreate(lowPrioBusyTask,
+      "lowPrioTask",
+      DEFAULT_STACK_DEPTH,
+      history, 1, &lowTask);
+  CHECK_EQUAL(pdPASS, ret);
+
+  /* 2. EXEC */
+  vTaskStartScheduler();
+
+  /* 3. CHECK */
+  CHECK_EQUAL(highTask, history[0]);
+  CHECK_EQUAL(lowTask, history[1]);
+  CHECK_EQUAL(highTask, history[2]);
+
+  /* 4. CLEANUP */
+  vTaskDelete(highTask);
+  vTaskDelete(lowTask);
 }
 
 int main(int argc, char* argv[])
