@@ -163,12 +163,62 @@ TEST(Scheduler, CallsTwoBusyTaskHandlers)
   vTaskDelete(tasks[1]);
 }
 
+static void
+storeIdTask(void* pvParameters)
+{
+  TaskHandle_t* history = (TaskHandle_t*)pvParameters;
+  TaskHandle_t handle = xTaskGetCurrentTaskHandle();
+
+  taskENTER_CRITICAL();
+
+  for (int i = 0; i < 1024; i++) {
+    if (history[i] == 0) {
+      history[i] = handle;
+      break;
+    }
+  }
+
+  taskEXIT_CRITICAL();
+
+  while (1)
+    vTaskDelay(1);
+}
+
+TEST(Scheduler, CallsTwoDifferentPrioTasks)
+{
+  /* 1. SETUP */
+  TaskHandle_t tasks[2];
+  TaskHandle_t history[1024] = { 0 };
+  int ret = pdFAIL;
+  ret = xTaskCreate(storeIdTask,
+      "highPrioTask",
+      DEFAULT_STACK_DEPTH,
+      history, 2, &tasks[0]);
+  CHECK_EQUAL(pdPASS, ret);
+  ret = xTaskCreate(storeIdTask,
+      "lowPrioTask",
+      DEFAULT_STACK_DEPTH,
+      history, 1, &tasks[1]);
+  CHECK_EQUAL(pdPASS, ret);
+
+  /* 2. EXEC */
+  vTaskStartScheduler();
+
+  /* 3. CHECK */
+  CHECK_EQUAL(history[0], tasks[0]);
+  CHECK_EQUAL(history[1], tasks[1]);
+
+  /* 4. CLEANUP */
+  vTaskDelete(tasks[0]);
+  vTaskDelete(tasks[1]);
+}
+
 int main(int argc, char* argv[])
 {
   /* Enable -p option to run tests in a separate process.
      To call pthread_once for each test. */
   int new_argc = argc + 1;
-  char** new_argv = (char**)malloc(sizeof(char*));
+  char** new_argv = (char**)malloc(sizeof(char*) * new_argc);
   for (int i = 0; i < argc; i++)
     new_argv[i] = strdup(argv[i]);
   new_argv[argc] = strdup("-p");
