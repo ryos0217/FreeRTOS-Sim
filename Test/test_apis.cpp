@@ -54,7 +54,7 @@ TEST(Scheduler, CallsOneTaskHandler)
   ret = xTaskCreate(justEndSchedulerTask,
       "JustEndSchedulerTask",
       DEFAULT_STACK_DEPTH,
-      &param, 0, &task);
+      &param, 1, &task);
   CHECK_EQUAL(pdPASS, ret);
 
   /* 2. EXEC */
@@ -97,12 +97,12 @@ TEST(Scheduler, CallsTwoTaskHandlers)
   ret = xTaskCreate(countUpTask,
       "countUpTask0",
       DEFAULT_STACK_DEPTH,
-      &count, 0, &tasks[0]);
+      &count, 1, &tasks[0]);
   CHECK_EQUAL(pdPASS, ret);
   ret = xTaskCreate(countUpTask,
       "countUpTask1",
       DEFAULT_STACK_DEPTH,
-      &count, 0, &tasks[1]);
+      &count, 1, &tasks[1]);
   CHECK_EQUAL(pdPASS, ret);
 
   /* 2. EXEC */
