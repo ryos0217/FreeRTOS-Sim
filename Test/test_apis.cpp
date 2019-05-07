@@ -41,10 +41,10 @@ void vAssertCalled(unsigned long ulLine, const char* const pcFileName)
 static TaskHandle_t taskTraceBuffer[SIZE_TRACE];
 static void taskTraceInit()
 {
-  for (int i = 0; i < SIZE_TRACE; i++) {
+  for (int i = 0; i < SIZE_TRACE; i++)
     taskTraceBuffer[i] = 0;
-  }
 }
+
 static void taskTrace()
 {
   taskENTER_CRITICAL();
@@ -62,6 +62,24 @@ static void taskTrace()
   taskEXIT_CRITICAL();
 }
 
+static int taskTraceCount()
+{
+  int count = 0;
+
+  taskENTER_CRITICAL();
+
+  for (int i = 0; i < SIZE_TRACE; i++) {
+    if (taskTraceBuffer[i] == 0)
+      break;
+
+    ++count;
+  }
+
+  taskEXIT_CRITICAL();
+
+  return count;
+}
+
 TEST_GROUP(Scheduler){
   void setup(){
       taskTraceInit();
@@ -73,21 +91,21 @@ void teardown()
 ;
 
 static void
-justEndSchedulerTask(void* pvParameters)
+setParamZero(void* pvParameters)
 {
   int* ptr = (int*)pvParameters;
   *ptr = 0;
   vTaskEndScheduler();
 }
 
-TEST(Scheduler, CallsOneTaskHandler)
+TEST(Scheduler, CallsHandlerWithParam)
 {
   /* 1. SETUP */
   TaskHandle_t task;
   int param = -1;
   int ret = pdFAIL;
-  ret = xTaskCreate(justEndSchedulerTask,
-      "JustEndSchedulerTask",
+  ret = xTaskCreate(setParamZero,
+      "task0",
       DEFAULT_STACK_DEPTH,
       &param, PRIO_LOW, &task);
   CHECK_EQUAL(pdPASS, ret);
@@ -103,45 +121,35 @@ TEST(Scheduler, CallsOneTaskHandler)
 }
 
 static void
-countUpTask(void* pvParameters)
+delayLoop(void* pvParameters)
 {
-  int* ptr = (int*)pvParameters;
+  taskTrace();
 
-  taskENTER_CRITICAL();
-
-  int count = *ptr;
-  ++count;
-  *ptr = count;
-
-  taskEXIT_CRITICAL();
-
-  while (1) {
+  while (1)
     vTaskDelay(1);
-  }
 }
 
 TEST(Scheduler, CallsTwoDelayTask)
 {
   /* 1. SETUP */
   TaskHandle_t tasks[2];
-  int count = 0;
   int ret = pdFAIL;
-  ret = xTaskCreate(countUpTask,
-      "countUpTask0",
+  ret = xTaskCreate(delayLoop,
+      "task0",
       DEFAULT_STACK_DEPTH,
-      &count, PRIO_LOW, &tasks[0]);
+      NULL, PRIO_LOW, &tasks[0]);
   CHECK_EQUAL(pdPASS, ret);
-  ret = xTaskCreate(countUpTask,
-      "countUpTask1",
+  ret = xTaskCreate(delayLoop,
+      "task1",
       DEFAULT_STACK_DEPTH,
-      &count, PRIO_LOW, &tasks[1]);
+      NULL, PRIO_LOW, &tasks[1]);
   CHECK_EQUAL(pdPASS, ret);
 
   /* 2. EXEC */
   vTaskStartScheduler();
 
   /* 3. CHECK */
-  CHECK_EQUAL(2, count);
+  CHECK_EQUAL(2, taskTraceCount());
 
   /* 4. CLEANUP */
   vTaskDelete(tasks[0]);
@@ -149,48 +157,38 @@ TEST(Scheduler, CallsTwoDelayTask)
 }
 
 static void
-countUpYieldTask(void* pvParameters)
+yieldLoop(void* pvParameters)
 {
-  int* ptr = (int*)pvParameters;
+  taskTrace();
 
-  taskENTER_CRITICAL();
-
-  int count = *ptr;
-  ++count;
-  *ptr = count;
-
-  taskEXIT_CRITICAL();
-
-  if (count == 2) {
+  if (taskTraceCount() == 2)
     vTaskEndScheduler();
-  } else {
-    while (1)
-      taskYIELD();
-  }
+
+  while (1)
+    taskYIELD();
 }
 
 TEST(Scheduler, CallsTwoYieldTask)
 {
   /* 1. SETUP */
   TaskHandle_t tasks[2];
-  int count = 0;
   int ret = pdFAIL;
-  ret = xTaskCreate(countUpYieldTask,
-      "countUpTask0",
+  ret = xTaskCreate(yieldLoop,
+      "task0",
       DEFAULT_STACK_DEPTH,
-      &count, PRIO_LOW, &tasks[0]);
+      NULL, PRIO_LOW, &tasks[0]);
   CHECK_EQUAL(pdPASS, ret);
-  ret = xTaskCreate(countUpYieldTask,
-      "countUpTask1",
+  ret = xTaskCreate(yieldLoop,
+      "task1",
       DEFAULT_STACK_DEPTH,
-      &count, PRIO_LOW, &tasks[1]);
+      NULL, PRIO_LOW, &tasks[1]);
   CHECK_EQUAL(pdPASS, ret);
 
   /* 2. EXEC */
   vTaskStartScheduler();
 
   /* 3. CHECK */
-  CHECK_EQUAL(2, count);
+  CHECK_EQUAL(2, taskTraceCount());
 
   /* 4. CLEANUP */
   vTaskDelete(tasks[0]);
@@ -198,48 +196,38 @@ TEST(Scheduler, CallsTwoYieldTask)
 }
 
 static void
-countUpBusyTask(void* pvParameters)
+busyLoop(void* pvParameters)
 {
-  int* ptr = (int*)pvParameters;
+  taskTrace();
 
-  taskENTER_CRITICAL();
-
-  int count = *ptr;
-  ++count;
-  *ptr = count;
-
-  taskEXIT_CRITICAL();
-
-  if (count == 2) {
+  if (taskTraceCount() == 2)
     vTaskEndScheduler();
-  } else {
-    while (1)
-      ;
-  }
+
+  while (1)
+    ;
 }
 
 TEST(Scheduler, CallsTwoBusyTaskTimeSlice)
 {
   /* 1. SETUP */
   TaskHandle_t tasks[2];
-  int count = 0;
   int ret = pdFAIL;
-  ret = xTaskCreate(countUpBusyTask,
-      "countUpTask0",
+  ret = xTaskCreate(busyLoop,
+      "task0",
       DEFAULT_STACK_DEPTH,
-      &count, PRIO_LOW, &tasks[0]);
+      NULL, PRIO_LOW, &tasks[0]);
   CHECK_EQUAL(pdPASS, ret);
-  ret = xTaskCreate(countUpBusyTask,
-      "countUpTask1",
+  ret = xTaskCreate(busyLoop,
+      "task1",
       DEFAULT_STACK_DEPTH,
-      &count, PRIO_LOW, &tasks[1]);
+      NULL, PRIO_LOW, &tasks[1]);
   CHECK_EQUAL(pdPASS, ret);
 
   /* 2. EXEC */
   vTaskStartScheduler();
 
   /* 3. CHECK */
-  CHECK_EQUAL(2, count);
+  CHECK_EQUAL(2, taskTraceCount());
 
   /* 4. CLEANUP */
   vTaskDelete(tasks[0]);
