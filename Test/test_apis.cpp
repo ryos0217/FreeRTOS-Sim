@@ -19,7 +19,6 @@ void vApplicationTickHook(void)
 void vApplicationIdleHook(void)
 {
   vTaskEndScheduler();
-  fprintf (stderr, "@@@@@ %s\n", __func__);
 }
 
 void vAssertCalled(unsigned long ulLine, const char* const pcFileName)
@@ -83,7 +82,7 @@ countUpTask(void* pvParameters)
   taskEXIT_CRITICAL();
 
   while (1) {
-    vTaskDelay (1);
+    vTaskDelay(1);
   }
 }
 
