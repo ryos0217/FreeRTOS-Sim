@@ -33,35 +33,44 @@ void vAssertCalled(unsigned long ulLine, const char* const pcFileName)
 }
 
 #define DEFAULT_STACK_DEPTH 2048
+#define PRIO_HIGH 3
+#define PRIO_MID 2
+#define PRIO_LOW 1
+#define SIZE_TRACE 64
 
-TEST_GROUP(Scheduler){
-  void setup(){
-    for (int i = 0; i < 1024; i++) {
-      history[i] = 0;
-    }
+static TaskHandle_t taskTraceBuffer[SIZE_TRACE];
+static void taskTraceInit()
+{
+  for (int i = 0; i < SIZE_TRACE; i++) {
+    taskTraceBuffer[i] = 0;
   }
-  void teardown(){}
-
- protected:
-  TaskHandle_t history[1024];
-};
-
-static void record(TaskHandle_t* history, int size) {
-  TaskHandle_t handle = xTaskGetCurrentTaskHandle();
-
+}
+static void taskTrace()
+{
   taskENTER_CRITICAL();
 
-  for (int i = 0; i < size; i++) {
-    if (history[i] == 0) {
-      history[i] = handle;
-      // printf ("@@@ %s: %d: history[%d] = %p\n",
-      //         __FILE__, __LINE__, i, handle);
+  for (int i = 0; i < SIZE_TRACE; i++) {
+    if (taskTraceBuffer[i] == 0) {
+      taskTraceBuffer[i] = xTaskGetCurrentTaskHandle();
+      // printf ("@@@ %s: %d: taskTraceBuffer[%d] = %p\n",
+      //         __FILE__, __LINE__,
+      //         i, taskTraceBuffer[i]);
       break;
     }
   }
 
   taskEXIT_CRITICAL();
 }
+
+TEST_GROUP(Scheduler){
+  void setup(){
+      taskTraceInit();
+}
+void teardown()
+{
+}
+}
+;
 
 static void
 justEndSchedulerTask(void* pvParameters)
@@ -80,7 +89,7 @@ TEST(Scheduler, CallsOneTaskHandler)
   ret = xTaskCreate(justEndSchedulerTask,
       "JustEndSchedulerTask",
       DEFAULT_STACK_DEPTH,
-      &param, 1, &task);
+      &param, PRIO_LOW, &task);
   CHECK_EQUAL(pdPASS, ret);
 
   /* 2. EXEC */
@@ -120,12 +129,12 @@ TEST(Scheduler, CallsTwoTaskHandlers)
   ret = xTaskCreate(countUpTask,
       "countUpTask0",
       DEFAULT_STACK_DEPTH,
-      &count, 1, &tasks[0]);
+      &count, PRIO_LOW, &tasks[0]);
   CHECK_EQUAL(pdPASS, ret);
   ret = xTaskCreate(countUpTask,
       "countUpTask1",
       DEFAULT_STACK_DEPTH,
-      &count, 1, &tasks[1]);
+      &count, PRIO_LOW, &tasks[1]);
   CHECK_EQUAL(pdPASS, ret);
 
   /* 2. EXEC */
@@ -169,12 +178,12 @@ TEST(Scheduler, CallsTwoBusyTaskHandlers)
   ret = xTaskCreate(countUpBusyTask,
       "countUpTask0",
       DEFAULT_STACK_DEPTH,
-      &count, 1, &tasks[0]);
+      &count, PRIO_LOW, &tasks[0]);
   CHECK_EQUAL(pdPASS, ret);
   ret = xTaskCreate(countUpBusyTask,
       "countUpTask1",
       DEFAULT_STACK_DEPTH,
-      &count, 1, &tasks[1]);
+      &count, PRIO_LOW, &tasks[1]);
   CHECK_EQUAL(pdPASS, ret);
 
   /* 2. EXEC */
@@ -191,9 +200,7 @@ TEST(Scheduler, CallsTwoBusyTaskHandlers)
 static void
 storeIdTask(void* pvParameters)
 {
-  TaskHandle_t* history = (TaskHandle_t*)pvParameters;
-
-  record (history, 1024);
+  taskTrace();
 
   while (1)
     vTaskDelay(1);
@@ -202,41 +209,39 @@ storeIdTask(void* pvParameters)
 TEST(Scheduler, CallsTwoDifferentPrioTasks)
 {
   /* 1. SETUP */
-  TaskHandle_t tasks[2];
+  TaskHandle_t highTask, lowTask;
   int ret = pdFAIL;
   ret = xTaskCreate(storeIdTask,
       "highPrioTask",
       DEFAULT_STACK_DEPTH,
-      history, 2, &tasks[0]);
+      NULL, PRIO_HIGH, &highTask);
   CHECK_EQUAL(pdPASS, ret);
   ret = xTaskCreate(storeIdTask,
       "lowPrioTask",
       DEFAULT_STACK_DEPTH,
-      history, 1, &tasks[1]);
+      NULL, PRIO_LOW, &lowTask);
   CHECK_EQUAL(pdPASS, ret);
 
   /* 2. EXEC */
   vTaskStartScheduler();
 
   /* 3. CHECK */
-  CHECK_EQUAL(history[0], tasks[0]);
-  CHECK_EQUAL(history[1], tasks[1]);
+  CHECK_EQUAL(highTask, taskTraceBuffer[0]);
+  CHECK_EQUAL(lowTask, taskTraceBuffer[1]);
 
   /* 4. CLEANUP */
-  vTaskDelete(tasks[0]);
-  vTaskDelete(tasks[1]);
+  vTaskDelete(highTask);
+  vTaskDelete(lowTask);
 }
 
 static void
 highPrioDelayedTask(void* pvParameters)
 {
-  TaskHandle_t* history = (TaskHandle_t*)pvParameters;
+  taskTrace();
 
-  record(history, 1024);
+  vTaskDelay(10);
 
-  vTaskDelay(1);
-
-  record(history, 1024);
+  taskTrace();
 
   vTaskEndScheduler();
 }
@@ -244,9 +249,7 @@ highPrioDelayedTask(void* pvParameters)
 static void
 lowPrioBusyTask(void* pvParameters)
 {
-  TaskHandle_t* history = (TaskHandle_t*)pvParameters;
-
-  record(history, 1024);
+  taskTrace();
 
   while (1) {
     ;
@@ -261,21 +264,21 @@ TEST(Scheduler, CallsHighPrioTaskPreemptively)
   ret = xTaskCreate(highPrioDelayedTask,
       "highPrioTask",
       DEFAULT_STACK_DEPTH,
-      history, 2, &highTask);
+      NULL, PRIO_HIGH, &highTask);
   CHECK_EQUAL(pdPASS, ret);
   ret = xTaskCreate(lowPrioBusyTask,
       "lowPrioTask",
       DEFAULT_STACK_DEPTH,
-      history, 1, &lowTask);
+      NULL, PRIO_LOW, &lowTask);
   CHECK_EQUAL(pdPASS, ret);
 
   /* 2. EXEC */
   vTaskStartScheduler();
 
   /* 3. CHECK */
-  CHECK_EQUAL(highTask, history[0]);
-  CHECK_EQUAL(lowTask, history[1]);
-  CHECK_EQUAL(highTask, history[2]);
+  CHECK_EQUAL(highTask, taskTraceBuffer[0]);
+  CHECK_EQUAL(lowTask, taskTraceBuffer[1]);
+  CHECK_EQUAL(highTask, taskTraceBuffer[2]);
 
   /* 4. CLEANUP */
   vTaskDelete(highTask);
