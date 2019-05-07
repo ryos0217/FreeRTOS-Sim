@@ -18,6 +18,8 @@ void vApplicationTickHook(void)
 
 void vApplicationIdleHook(void)
 {
+  vTaskEndScheduler();
+  fprintf (stderr, "@@@@@ %s\n", __func__);
 }
 
 void vAssertCalled(unsigned long ulLine, const char* const pcFileName)
@@ -80,11 +82,8 @@ countUpTask(void* pvParameters)
 
   taskEXIT_CRITICAL();
 
-  if (count == 2) {
-    vTaskEndScheduler();
-  } else {
-    while (1)
-      taskYIELD();
+  while (1) {
+    vTaskDelay (1);
   }
 }
 
@@ -100,6 +99,55 @@ TEST(Scheduler, CallsTwoTaskHandlers)
       &count, 1, &tasks[0]);
   CHECK_EQUAL(pdPASS, ret);
   ret = xTaskCreate(countUpTask,
+      "countUpTask1",
+      DEFAULT_STACK_DEPTH,
+      &count, 1, &tasks[1]);
+  CHECK_EQUAL(pdPASS, ret);
+
+  /* 2. EXEC */
+  vTaskStartScheduler();
+
+  /* 3. CHECK */
+  CHECK_EQUAL(2, count);
+
+  /* 4. CLEANUP */
+  vTaskDelete(tasks[0]);
+  vTaskDelete(tasks[1]);
+}
+
+static void
+countUpBusyTask(void* pvParameters)
+{
+  int* ptr = (int*)pvParameters;
+
+  taskENTER_CRITICAL();
+
+  int count = *ptr;
+  ++count;
+  *ptr = count;
+
+  taskEXIT_CRITICAL();
+
+  if (count == 2) {
+    vTaskEndScheduler();
+  } else {
+    while (1)
+      taskYIELD();
+  }
+}
+
+TEST(Scheduler, CallsTwoBusyTaskHandlers)
+{
+  /* 1. SETUP */
+  TaskHandle_t tasks[2];
+  int count = 0;
+  int ret = pdFAIL;
+  ret = xTaskCreate(countUpBusyTask,
+      "countUpTask0",
+      DEFAULT_STACK_DEPTH,
+      &count, 1, &tasks[0]);
+  CHECK_EQUAL(pdPASS, ret);
+  ret = xTaskCreate(countUpBusyTask,
       "countUpTask1",
       DEFAULT_STACK_DEPTH,
       &count, 1, &tasks[1]);
