@@ -1,7 +1,11 @@
 #include <CppUTest/CommandLineTestRunner.h>
 #include <CppUTest/TestHarness.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 extern "C" {
 #include "FreeRTOS.h"
@@ -80,15 +84,35 @@ static int taskTraceCount()
   return count;
 }
 
-TEST_GROUP(Scheduler){
-  void setup(){
-      taskTraceInit();
-}
-void teardown()
+TEST_GROUP(Scheduler)
 {
-}
-}
-;
+  void setup()
+  {
+    taskTraceInit();
+    disableStdout();
+  }
+  void teardown()
+  {
+    restoreStdout();
+  }
+
+  private:
+  int backupStdout;
+  void disableStdout()
+  {
+    backupStdout = dup(fileno(stdout));
+    if (backupStdout < 0)
+      return;
+    close(fileno(stdout));
+    int nullFd = open("/dev/null", O_RDWR);
+    CHECK_EQUAL(fileno(stdout), nullFd);
+  }
+  void restoreStdout()
+  {
+    dup2(backupStdout, fileno(stdout));
+    close(backupStdout);
+  }
+};
 
 static void
 setParamZero(void* pvParameters)
