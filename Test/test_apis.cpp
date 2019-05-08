@@ -363,11 +363,11 @@ highPrioNotifyTake(void* pvParameters)
 static void
 lowPrioNotifyGive(void* pvParameters)
 {
-  TaskHandle_t taker = (TaskHandle_t)pvParameters;
+  TaskHandle_t *highTask = (TaskHandle_t*)pvParameters;
 
   taskTrace();
 
-  xTaskNotifyGive(taker);
+  xTaskNotifyGive(*highTask);
 
   taskTrace();
 
@@ -376,7 +376,7 @@ lowPrioNotifyGive(void* pvParameters)
   }
 }
 
-TEST(Scheduler, TaskNotification)
+TEST(Scheduler, TaskNotificationOneWay)
 {
   /* 1. SETUP */
   TaskHandle_t highTask, lowTask;
@@ -389,7 +389,7 @@ TEST(Scheduler, TaskNotification)
   ret = xTaskCreate(lowPrioNotifyGive,
       "lowPrioTask",
       DEFAULT_STACK_DEPTH,
-      highTask, PRIO_LOW, &lowTask);
+      &highTask, PRIO_LOW, &lowTask);
   CHECK_EQUAL(pdPASS, ret);
 
   /* 2. EXEC */
@@ -397,6 +397,74 @@ TEST(Scheduler, TaskNotification)
 
   /* 3. CHECK */
   CHECK_EQUAL(highTask, taskTraceBuffer[0]);
+  CHECK_EQUAL(lowTask, taskTraceBuffer[1]);
+  CHECK_EQUAL(highTask, taskTraceBuffer[2]);
+
+  /* 4. CLEANUP */
+  vTaskDelete(highTask);
+  vTaskDelete(lowTask);
+}
+
+static void
+highPrioNotifyTakeAndGive(void* pvParameters)
+{
+  TaskHandle_t *lowTask = (TaskHandle_t*)pvParameters;
+
+  taskTrace();
+
+  ulTaskNotifyTake(pdTRUE, -1);
+
+  taskTrace();
+
+  xTaskNotifyGive(*lowTask);
+
+  taskTrace();
+
+  while (1)
+    vTaskDelay(1);
+}
+
+static void
+lowPrioNotifyGiveAndTake(void* pvParameters)
+{
+  TaskHandle_t *highTask = (TaskHandle_t*)pvParameters;
+
+  taskTrace();
+
+  xTaskNotifyGive(*highTask);
+
+  taskTrace();
+
+  ulTaskNotifyTake(pdTRUE, -1);
+
+  taskTrace();
+
+  vTaskEndScheduler();
+}
+
+TEST(Scheduler, TaskNotificationRoundTrip)
+{
+  /* 1. SETUP */
+  TaskHandle_t highTask, lowTask;
+  int ret = pdFAIL;
+  ret = xTaskCreate(highPrioNotifyTakeAndGive,
+      "highPrioTask",
+      DEFAULT_STACK_DEPTH,
+      &lowTask, PRIO_HIGH, &highTask);
+  CHECK_EQUAL(pdPASS, ret);
+  ret = xTaskCreate(lowPrioNotifyGiveAndTake,
+      "lowPrioTask",
+      DEFAULT_STACK_DEPTH,
+      &highTask, PRIO_LOW, &lowTask);
+  CHECK_EQUAL(pdPASS, ret);
+
+  /* 2. EXEC */
+  vTaskStartScheduler();
+
+  /* 3. CHECK */
+  CHECK_EQUAL(highTask, taskTraceBuffer[0]);
+  CHECK_EQUAL(lowTask, taskTraceBuffer[1]);
+  CHECK_EQUAL(highTask, taskTraceBuffer[2]);
   CHECK_EQUAL(lowTask, taskTraceBuffer[1]);
   CHECK_EQUAL(highTask, taskTraceBuffer[2]);
 
