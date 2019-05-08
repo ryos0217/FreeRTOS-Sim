@@ -56,9 +56,11 @@ static void taskTrace()
   for (int i = 0; i < SIZE_TRACE; i++) {
     if (taskTraceBuffer[i] == 0) {
       taskTraceBuffer[i] = xTaskGetCurrentTaskHandle();
-      // printf ("@@@ %s: %d: taskTraceBuffer[%d] = %p\n",
-      //         __FILE__, __LINE__,
-      //         i, taskTraceBuffer[i]);
+#if 0
+      fprintf(stderr, "@@@ %s: %d: taskTraceBuffer[%d] = %p\n",
+          __FILE__, __LINE__,
+          i, taskTraceBuffer[i]);
+#endif
       break;
     }
   }
@@ -331,6 +333,63 @@ TEST(Scheduler, CallsHighPrioTaskPreemptively)
       "lowPrioTask",
       DEFAULT_STACK_DEPTH,
       NULL, PRIO_LOW, &lowTask);
+  CHECK_EQUAL(pdPASS, ret);
+
+  /* 2. EXEC */
+  vTaskStartScheduler();
+
+  /* 3. CHECK */
+  CHECK_EQUAL(highTask, taskTraceBuffer[0]);
+  CHECK_EQUAL(lowTask, taskTraceBuffer[1]);
+  CHECK_EQUAL(highTask, taskTraceBuffer[2]);
+
+  /* 4. CLEANUP */
+  vTaskDelete(highTask);
+  vTaskDelete(lowTask);
+}
+
+static void
+highPrioNotifyTake(void* pvParameters)
+{
+  taskTrace();
+
+  ulTaskNotifyTake(pdTRUE, -1);
+
+  taskTrace();
+
+  vTaskEndScheduler();
+}
+
+static void
+lowPrioNotifyGive(void* pvParameters)
+{
+  TaskHandle_t taker = (TaskHandle_t)pvParameters;
+
+  taskTrace();
+
+  xTaskNotifyGive(taker);
+
+  taskTrace();
+
+  while (1) {
+    ;
+  }
+}
+
+TEST(Scheduler, TaskNotification)
+{
+  /* 1. SETUP */
+  TaskHandle_t highTask, lowTask;
+  int ret = pdFAIL;
+  ret = xTaskCreate(highPrioNotifyTake,
+      "highPrioTask",
+      DEFAULT_STACK_DEPTH,
+      NULL, PRIO_HIGH, &highTask);
+  CHECK_EQUAL(pdPASS, ret);
+  ret = xTaskCreate(lowPrioNotifyGive,
+      "lowPrioTask",
+      DEFAULT_STACK_DEPTH,
+      highTask, PRIO_LOW, &lowTask);
   CHECK_EQUAL(pdPASS, ret);
 
   /* 2. EXEC */
