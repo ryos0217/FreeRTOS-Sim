@@ -363,7 +363,7 @@ highPrioNotifyTake(void* pvParameters)
 static void
 lowPrioNotifyGive(void* pvParameters)
 {
-  TaskHandle_t *highTask = (TaskHandle_t*)pvParameters;
+  TaskHandle_t* highTask = (TaskHandle_t*)pvParameters;
 
   taskTrace();
 
@@ -408,7 +408,7 @@ TEST(Scheduler, TaskNotificationOneWay)
 static void
 highPrioNotifyTakeAndGive(void* pvParameters)
 {
-  TaskHandle_t *lowTask = (TaskHandle_t*)pvParameters;
+  TaskHandle_t* lowTask = (TaskHandle_t*)pvParameters;
 
   taskTrace();
 
@@ -427,7 +427,7 @@ highPrioNotifyTakeAndGive(void* pvParameters)
 static void
 lowPrioNotifyGiveAndTake(void* pvParameters)
 {
-  TaskHandle_t *highTask = (TaskHandle_t*)pvParameters;
+  TaskHandle_t* highTask = (TaskHandle_t*)pvParameters;
 
   taskTrace();
 
