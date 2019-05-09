@@ -1,4 +1,32 @@
-Cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.5)
+
+add_compile_options(
+  -W
+  -Wall
+  -Werror
+  -Wextra
+  -Wformat
+  -Wmissing-braces
+  -Wno-cast-align
+  -Wparentheses
+  -Wshadow
+  -Wno-sign-compare
+  -Wswitch
+  -Wuninitialized
+  -Wunknown-pragmas
+  -Wunused-function
+  -Wunused-label
+  -Wunused-value
+  -Wunused-variable
+  -Wno-unused-parameter
+  -DDEBUG=1
+  -UUSE_STDIO
+  -D__GCC_POSIX__=1
+  -DMAX_NUMBER_OF_TASKS=300)
+
+set(CMAKE_C_FLAGS
+  ${CMAKE_C_FLAGS}
+  -Wno-missing-prototypes)
 
 include_directories(
   ../Project
