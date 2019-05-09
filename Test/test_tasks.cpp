@@ -16,6 +16,10 @@ static void prvCheckTask(void* pvParameters)
     /* Task shall not end */
   }
 }
+
+void vApplicationGetIdleTaskMemory(StaticTask_t** ppxIdleTaskTCBBuffer, StackType_t** ppxIdleTaskStackBuffer, uint32_t* pulIdleTaskStackSize)
+{
+}
 }
 
 #define DEFAULT_STACK_DEPTH 2048
@@ -84,6 +88,14 @@ TEST(xTaskCreate, ChangesCurrentTaskName)
   CHECK_EQUAL(pdPASS, ret);
   STRCMP_EQUAL("TaskName", pcTaskGetName(xTaskGetCurrentTaskHandle()));
   CHECK(checkCurrentTaskName("TaskName"));
+}
+
+TEST(xTaskCreate, SetStaticallyAllocated)
+{
+  int ret = xTaskCreate(prvCheckTask, "TaskName", DEFAULT_STACK_DEPTH, NULL, 1, &task);
+
+  CHECK_EQUAL(pdPASS, ret);
+  CHECK_TRUE(isDinamicallyAllocated());
 }
 
 int main(int argc, char* argv[])

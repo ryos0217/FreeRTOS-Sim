@@ -49,13 +49,30 @@ target_link_libraries(
   CppUTest
   CppUTestExt)
 
-add_executable(test_tasks
+set(test_tasks_SRCS
   test_tasks.cpp
   stub.c
   ../Source/list.c
   tasks_sniffer.c)
 
-target_link_libraries(
-  test_tasks
+set(test_tasks_LIBS
   CppUTest
   CppUTestExt)
+
+ add_executable(test_tasks
+  ${test_tasks_SRCS})
+
+target_link_libraries(
+  test_tasks
+  ${test_tasks_LIBS})
+
+add_executable(test_tasks_SUPPORT_STATIC_ALLOCATION
+  ${test_tasks_SRCS})
+
+target_link_libraries(
+  test_tasks_SUPPORT_STATIC_ALLOCATION
+  ${test_tasks_LIBS})
+
+target_compile_options(
+  test_tasks_SUPPORT_STATIC_ALLOCATION
+  PRIVATE -DconfigSUPPORT_STATIC_ALLOCATION=1)

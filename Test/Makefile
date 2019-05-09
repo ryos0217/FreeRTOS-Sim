@@ -15,6 +15,7 @@ clean:
 run: all
 	$(ODIR)/test_apis -c -v
 	$(ODIR)/test_tasks -c -v
+	$(ODIR)/test_tasks_SUPPORT_STATIC_ALLOCATION -c -v
 
 .PHONY: style
 style_FILES = $(wildcard *.c *.h *.cpp)
