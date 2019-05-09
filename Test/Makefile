@@ -19,4 +19,4 @@ run: all
 .PHONY: style
 style_FILES = $(wildcard *.c *.h *.cpp)
 style:
-	$(S)clang-format -i $(style_FILES)
+	clang-format -i $(style_FILES)
