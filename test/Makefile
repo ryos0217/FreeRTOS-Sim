@@ -1,4 +1,4 @@
-CPPFLAGS=-I../Source/include
+CPPFLAGS=-I../Source/include -I../Project -I../Source/portable/GCC/POSIX
 
 all:	test_tasks
 
