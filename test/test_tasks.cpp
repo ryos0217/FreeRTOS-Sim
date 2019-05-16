@@ -3,7 +3,8 @@
 
 
 extern "C" {
-
+#include "FreeRTOS.h"
+#include "task.h"
 }
 
 TEST_GROUP(ClassName)
@@ -20,6 +21,7 @@ TEST_GROUP(ClassName)
 
 TEST(ClassName, TestName)
 {
+    xTaskCreate(NULL,NULL,0,NULL,0,NULL);
     FAIL("first test");
 }
 

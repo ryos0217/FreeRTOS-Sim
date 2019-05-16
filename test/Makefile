@@ -1,4 +1,4 @@
-all:	test_tasks
+all:	test_tasks\
 
 test_tasks.o:	test_tasks.cpp
 	g++ -c -o $@ $^
