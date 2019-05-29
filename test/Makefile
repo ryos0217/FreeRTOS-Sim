@@ -9,7 +9,7 @@ test_tasks:	test_tasks.o
 	g++ -o $@ $(CPPFLAGS) $^ `pkg-config --libs cpputest`
 
 run:	test_tasks
-	./$<
+	./$< -c -v
 
 clean:
 	rm -f test_tasks *~ *.o
