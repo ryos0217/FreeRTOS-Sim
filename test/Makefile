@@ -6,10 +6,10 @@ CXX:=clang++
 all:	test_tasks
 
 test_tasks.o:	test_tasks.cpp
-	$(CXX) -c -o $@ $(CPPFLAGS) $^
+	$(CXX) -c -o $@ $(CXXFLAGS) $^
 
 test_tasks:	test_tasks.o
-	$(CXX) -o $@ $(CPPFLAGS) $^ `pkg-config --libs cpputest`
+	$(CXX) -o $@ $(CXXFLAGS) $^ `pkg-config --libs cpputest`
 
 run:	test_tasks
 	./$< -c -v
