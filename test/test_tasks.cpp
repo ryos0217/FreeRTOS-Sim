@@ -13,7 +13,6 @@ TEST_GROUP(ClassName)
   }
   void teardown()
   {
-    ;
   }
 };
 
